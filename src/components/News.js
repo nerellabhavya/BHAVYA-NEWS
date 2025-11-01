@@ -5,7 +5,6 @@ import Spinner from './Spinner';
 export class News extends Component {
   constructor() {
     super();
-    console.log("Hello, I am constructor");
     this.state = {
       articles: [],
       loading: false,
@@ -18,26 +17,34 @@ export class News extends Component {
     this.updateNews();
   }
 
-  // ✅ Helper to simulate at least 2 seconds of loading
+  // Helper delay to show spinner for at least 2s
   sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // ✅ Fetches news and ensures spinner shows for minimum 2 seconds
+  // ✅ Function to fetch news safely (CORS-compatible for Render)
   async updateNews(pageNumber = this.state.page) {
     try {
-      const url = `https://newsapi.org/v2/top-headlines?country=us&apiKey=e4dac39d3cf2424b8c7c6bc553e27e30&page=${pageNumber}&pageSize=${this.props.pageSize}`;
+      // 🔥 Use a free CORS proxy because Render blocks direct browser calls
+      const proxyUrl = "https://api.allorigins.win/get?url=";
+      const targetUrl = encodeURIComponent(
+        `https://newsapi.org/v2/top-headlines?country=us&apiKey=e4dac39d3cf2424b8c7c6bc553e27e30&page=${pageNumber}&pageSize=${this.props.pageSize}`
+      );
+      const finalUrl = `${proxyUrl}${targetUrl}`;
+
       this.setState({ loading: true });
       const startTime = Date.now();
 
-      let data = await fetch(url);
+      let data = await fetch(finalUrl);
       if (!data.ok) {
         console.error("Failed to fetch news:", data.status);
         this.setState({ articles: [], loading: false });
         return;
       }
 
-      let parsedData = await data.json();
+      // Parse twice (AllOrigins wraps the response)
+      let wrappedData = await data.json();
+      let parsedData = JSON.parse(wrappedData.contents);
 
-      // Calculate delay to ensure spinner is visible for 2s
+      // Ensure spinner visible for at least 2 seconds
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(2000 - elapsed, 0);
       await this.sleep(remaining);
